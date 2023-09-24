@@ -1,0 +1,165 @@
+﻿@page
+@using DataAccess.DataModels;
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">NBA Statistics</h1>
+</div>
+
+<div id="table" class="row table-responsive">
+@if(Model.Teams?.Any() ?? false)
+{
+    <table class="table table-dark table-striped table-hover">
+        <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th>Stadium</th>
+                <th>Logo</th>
+                <th>MVP</th>
+                <th>Played</th>
+                <th onClick="changeY(this);" 
+                    data-yAxis="Wins" 
+                    class="clickable selected" 
+                    id="wins"
+                >
+                    Won
+                </th>
+                <th onclick="changeY(this);" 
+                    data-yAxis="Losses" 
+                    class="clickable" 
+                    id="losses"
+                >
+                    Lost
+                </th>
+                <th>Played Home</th>
+                <th>Played Away</th>
+                <th>Biggest Win</th>
+                <th>Biggest Loss</th>
+                <th>Last Game Stadium</th>
+                <th>Last Game Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (TeamSummary team in Model.Teams)
+            {
+                <tr>
+                    <td>@team.Name</td>
+                    <td>@team.Stadium</td>
+                    <td>
+                        <a href="@team.HomePageUrl" target="_blank" rel="noopener noreferrer">
+                            <img src="@team.LogoUrl" class="logo" alt="@team.Name Team Logo">
+                        </a>
+                    </td>
+                    <td>@team.MVP</td>
+                    <td>@team.TotalGamesPlayed</td>
+                    <td>@team.TotalGamesWon</td>
+                    <td>@team.TotalGamesLost</td>
+                    <td>@team.HomeGamesPlayed</td>
+                    <td>@team.AwayGamesPlayed</td>
+                    <td>@team.BiggestWinPointsFor - @team.BiggestWinPointsAgainst</td>
+                    <td>@team.BiggestLossPointsFor - @team.BiggestLossPointsAgainst</td>
+                    <td>@team.LastGameStadium</td>
+                    <td>@team.LastGameDate.Date.ToString("yyyy-MM-dd")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+</div>
+
+<div class="chart-container">
+    <canvas id="myChart"></canvas>
+</div>
+
+
+
+@section Scripts{
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        const ctx = document.getElementById('myChart');
+
+        var teams = @Html.Raw(Json.Serialize(Model.Teams));
+
+        const chartData = teams.map(team => {
+            let teamObject = {};
+            teamObject.name = team.name;
+            teamObject.stats = {};
+            teamObject.stats.Wins = team.totalGamesWon;
+            teamObject.stats.Losses = team.totalGamesLost;
+            return teamObject;
+        });
+
+        const colours = [
+          'rgba(255, 99, 132, 0.8)',
+          'rgba(255, 159, 64, 0.8)',
+          'rgba(255, 205, 86, 0.8)',
+          'rgba(75, 192, 192, 0.8)',
+          'rgba(54, 162, 235, 0.8)',
+          'rgba(153, 102, 255, 0.8)',
+          'rgba(201, 203, 207, 0.8)',
+          'rgba(25, 255, 102, 0.8)'
+        ];
+
+        const teamChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                datasets: [{
+                    label: 'Wins',
+                    data: chartData,
+                    borderWidth: 1,
+                    parsing: {
+                        xAxisKey: 'name',
+                        yAxisKey: 'stats.Wins'
+                    },
+                    backgroundColor: (c) => (colours[c.dataIndex])
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Wins',
+                        font: {
+                            size: 25
+                        }
+                    },
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        const chartOptions = [
+            document.getElementById("wins"),
+            document.getElementById("losses")
+        ];
+
+        function changeY(settingHeader){
+            if (!settingHeader.classList.contains('selected')){
+                let y = settingHeader.getAttribute('data-yAxis');
+
+                chartOptions.forEach(el => {
+                    el.classList.remove("selected");
+                });
+                settingHeader.classList.add("selected");
+
+                teamChart.data.datasets[0].label = y;
+                teamChart.data.datasets[0].parsing.yAxisKey = 'stats.' + y;
+                teamChart.options.plugins.title.text = y;
+                teamChart.update();
+            }
+
+            ctx.scrollIntoView();
+        }
+    </script>
+}
